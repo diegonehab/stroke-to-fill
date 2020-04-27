@@ -1,0 +1,20 @@
+sudo apt-get install libgsl-dev
+wget https://media.inkscape.org/dl/resources/file/inkscape-0.92.4_A6N0YOn.tar.bz2
+tar -jxvf inkscape-0.92.4_A6N0YOn.tar.bz2
+patch -p0 < common.patch
+cd inkscape-0.92.4
+touch src/config.h
+make -j24 -f ../makefile.livarot
+sudo cp liblivarot-stroker.a /usr/local/lib
+sudo \rm -rf /usr/local/include/strokers/livarot
+sudo mkdir -p /usr/local/include/strokers/livarot
+sudo mkdir -p /usr/local/include/strokers/livarot/livarot
+sudo cp src/livarot/*.h /usr/local/include/strokers/livarot/livarot
+sudo mkdir -p /usr/local/include/strokers/livarot/helper
+sudo cp src/helper/*.h /usr/local/include/strokers/livarot/helper
+sudo mkdir -p /usr/local/include/strokers/livarot/2geom
+sudo cp src/2geom/*.h /usr/local/include/strokers/livarot/2geom
+sudo touch /usr/local/include/strokers/livarot/config.h
+
+sudo cp ../livarot-stroker.pc /usr/local/lib/pkgconfig
+

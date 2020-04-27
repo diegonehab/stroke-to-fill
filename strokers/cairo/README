@@ -1,0 +1,33 @@
+wget http://cairographics.org/snapshots/cairo-1.17.2.tar.xz
+tar -Jxvf cairo-1.17.2.tar.xz
+cd cairo-1.17.2/src
+patch < ../../cairo-traps.patch
+patch < ../../cairo-polygon.patch
+patch -p2 < ../../cairo-tristrip.patch
+cd ..
+
+wget https://www.cairographics.org/releases/pixman-0.38.0.tar.gz
+tar -zxvf pixman-0.38.0.tar.gz
+cd pixman-0.38.0
+./configure -enable-shared=no --enable-gtk=no --enable-libpng=no --with-pic=yes
+make -j24
+sudo make install
+sudo mv /usr/local/lib/pkgconfig/pixman-1.pc /usr/local/lib/pkgconfig/cairo-stroker-pixman-1.pc
+cd ..
+
+pixman_CFLAGS="$(pkg-config --cflags cairo-stroker-pixman-1)" pixman_LIBS="$(pkg-config --libs cairo-stroker-pixman-1)" ./configure --enable-xlib=no --enable-xlib-xrender=no --enable-xcb=no --enable-xlib-xcb=no --enable-xcb-shm=no --enable-qt=no --enable-png=no --enable-gl=no --enable-cogl=no --enable-ft=no --enable-fc=no --enable-ps=no --enable-pdf=no --enable-svg=no --enable-glx=no --enable-pthread=yes --enable-gobject=no --disable-valgrind --enable-script=no --enable-interpreter=no --enable-trace=no --with-pic=yes
+
+make -j24
+sudo \rm -rf /usr/local/include/cairo
+sudo make install
+sudo \rm -f /usr/local/lib/libcairo-*
+sudo \rm -f /usr/local/lib/libcairo*so*
+sudo \rm -rf /usr/local/lib/cairo
+sudo mv /usr/local/lib/libcairo.a /usr/local/lib/libcairo-stroker.a
+sudo mv /usr/local/lib/libcairo.la /usr/local/lib/libcairo-stroker.la
+sudo cp src/cairoint.h /usr/local/include/cairo
+sudo cp src/cairo*private.h /usr/local/include/cairo
+sudo cp config.h /usr/local/include/cairo
+sudo mv /usr/local/include/cairo /usr/local/include/strokers
+sudo rm /usr/local/lib/pkgconfig/cairo.pc
+sudo cp ../cairo-stroker.pc /usr/local/lib/pkgconfig

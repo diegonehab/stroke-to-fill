@@ -1,0 +1,11 @@
+prefix=/opt/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: b64
+Description: base64 encode and decode
+Version: 1.2-3
+
+Libs: -L${libdir} -lb64
+Cflags: -I${includedir}

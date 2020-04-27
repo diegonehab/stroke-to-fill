@@ -1,0 +1,52 @@
+diff -Naur ghostscript-9.26/base/gslibctx.c ../ghostscript-9.26/base/gslibctx.c
+--- ghostscript-9.26/base/gslibctx.c	2018-11-20 08:08:19.000000000 -0200
++++ ../ghostscript-9.26/base/gslibctx.c	2019-03-19 23:07:47.000000000 -0300
+@@ -190,9 +190,11 @@
+     if (gscms_create(mem))
+         goto Failure;
+ 
++#if 0
+     /* Initialise any lock required for the jpx codec */
+     if (sjpxd_create(mem))
+         goto Failure;
++#endif
+ 
+     pio->client_check_file_permission = NULL;
+     gp_get_realtime(pio->real_time_0);
+@@ -238,7 +240,9 @@
+     ctx = mem->gs_lib_ctx;
+     ctx_mem = ctx->memory;
+ 
++#if 0
+     sjpxd_destroy(mem);
++#endif
+     gscms_destroy(ctx_mem);
+     gs_free_object(ctx_mem, ctx->profiledir,
+         "gs_lib_ctx_fin");
+diff -Naur ghostscript-9.26/base/gxpaint.h ../ghostscript-9.26/base/gxpaint.h
+--- ghostscript-9.26/base/gxpaint.h	2018-11-20 08:08:19.000000000 -0200
++++ ../ghostscript-9.26/base/gxpaint.h	2019-03-19 23:11:15.000000000 -0300
+@@ -110,6 +110,7 @@
+ struct gx_stroke_params_s {
+     float flatness;
+     bool  traditional;
++    int mode;
+ };
+ 
+ int gx_stroke_path_only(gx_path * ppath, gx_path * to_path, gx_device * dev,
+diff -Naur ghostscript-9.26/base/gxstroke.c ../ghostscript-9.26/base/gxstroke.c
+--- ghostscript-9.26/base/gxstroke.c	2018-11-20 08:08:19.000000000 -0200
++++ ../ghostscript-9.26/base/gxstroke.c	2019-03-19 23:12:37.000000000 -0300
+@@ -423,10 +423,8 @@
+ {
+     bool CPSI_mode = gs_currentcpsimode(pgs->memory);
+     bool traditional = CPSI_mode | params->traditional;
+-    stroke_line_proc_t line_proc =
+-               ((to_path == 0 && !gx_dc_is_pattern1_color_clist_based(pdevc))
+-                      ? (lop_is_idempotent(pgs->log_op) ? stroke_fill : stroke_add) :
+-                        (traditional ? stroke_add_compat : stroke_add_fast));
++    stroke_line_proc_t line_proc = params->mode == 0? stroke_add_fast:
++        (params->mode == 1? stroke_add_compat: stroke_add);
+     gs_fixed_rect ibox, cbox;
+     gx_device_clip cdev;
+     gx_device *dev = pdev;

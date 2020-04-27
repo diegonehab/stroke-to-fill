@@ -1,0 +1,38 @@
+#!/bin/bash
+
+set -e
+
+stroker=$1
+shift
+
+p=$(command nproc) || p=$(command gnproc) || p=4
+
+task() {
+	local test=$1
+	shift
+    local bare="a/${test}.png"
+    echo $test
+    luapp test-strokers.lua -test:$test -driver:skia -stroker:$stroker $* > $bare
+}
+
+t=0;
+for test in $(luapp test-strokers.lua -test:list | sort); do
+	((t=t+1));
+	if [[ $(expr $t % $p) == 0 ]]; then
+        for pid in ${PIDS[@]}; do
+            wait ${pid}
+            STATUS+=($?)
+        done
+        for st in ${STATUS[@]}; do
+            if [[ ${st} -ne 0 ]]; then
+                echo stroker failed
+                exit ${st}
+            fi
+        done
+        PIDS=()
+        STATUS=()
+    fi
+	task "$test" $* &
+    PIDS+=($!)
+done
+wait

@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/strokers
+
+Name: cairo-stroker
+Description: Hack to expose Cairo's strokers
+Version: 1.17.2
+
+Libs: -L${libdir} -lcairo-stroker
+Requires: cairo-stroker-pixman-1 >= 0.36
+Cflags: -D_REENTRANT -DHAVE_CONFIG_H -Wno-attributes -Wno-unused-result -I${includedir}/cairo

@@ -1,0 +1,13 @@
+# We used file http://www.antigrain.com/agg-2.5.tar.gz in our tests.
+# That file doesn't seem to be available anymore.
+# This alternative seems to work similarly
+
+svn checkout -r134 https://svn.code.sf.net/p/agg/svn/ agg
+tar -zxvf agg/agg-web/agg-2.5.tar.gz
+cd agg-2.5
+patch -p1 < ../agg.patch
+make
+sudo mkdir -p /usr/local/include/strokers/agg2
+sudo cp -r include/* /usr/local/include/strokers/agg2
+sudo cp src/libagg.a /usr/local/lib/libagg-stroker.a
+sudo cp ../agg-stroker.pc /usr/local/lib/pkgconfig

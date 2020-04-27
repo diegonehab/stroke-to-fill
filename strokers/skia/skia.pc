@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/skia
+
+Name: Skia
+Description: Skia stroker
+Version: 1.0
+Libs: -L${libdir}/skia -lskia -lpathkit -lpthread -ldl
+Libs.private:
+Requires: freetype2, fontconfig, libjpeg, libpng16, gl, libwebp, libwebpdemux, libwebpmux
+Cflags: -I${includedir} -I${includedir}/include -I${includedir}/include/core -I${includedir}/include/config -I${includedir}/include/effects -I${includedir}/include/gpu

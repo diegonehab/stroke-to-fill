@@ -1,0 +1,15 @@
+--- cairo-traps.c	2016-12-08 17:31:51.000000000 -0200
++++ cairo-traps-modified.c	2017-04-02 13:45:39.349559014 -0300
+@@ -155,9 +155,9 @@
+ {
+     cairo_trapezoid_t *trap;
+ 
+-    assert (left->p1.y != left->p2.y);
+-    assert (right->p1.y != right->p2.y);
+-    assert (bottom > top);
++    /* assert (left->p1.y != left->p2.y); */
++    /* assert (right->p1.y != right->p2.y); */
++    /* assert (bottom > top); */
+ 
+     if (unlikely (traps->num_traps == traps->traps_size)) {
+ 	if (unlikely (! _cairo_traps_grow (traps)))

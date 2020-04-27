@@ -1,0 +1,12 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/strokers
+
+Name: MuPDF
+Description: A lightweight PDF, XPS, and E-book viewer
+Version: 1.14
+Libs: -L${libdir} -lmupdf-stroker -lmupdf-third -lm
+Libs.private:
+Requires:
+Cflags: -I${includedir}

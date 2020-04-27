@@ -1,0 +1,121 @@
+diff -Naur mupdf-1.14.0-source/Makethird ../mupdf-1.14.0-source/Makethird
+--- mupdf-1.14.0-source/Makethird	2018-10-04 06:19:28.000000000 -0300
++++ ../mupdf-1.14.0-source/Makethird	2019-03-13 18:05:15.244401307 -0300
+@@ -210,7 +210,7 @@
+   THIRD_LIBS += $(SYS_LCMS2_CFLAGS)
+ else
+ 
+-THIRD_SRC += $(sort $(wildcard thirdparty/lcms2/src/cms*.c))
++# THIRD_SRC += $(sort $(wildcard thirdparty/lcms2/src/cms*.c))
+ 
+ THIRD_CFLAGS += -Ithirdparty/lcms2/include
+ 
+diff -Naur mupdf-1.14.0-source/source/fitz/draw-edge.c ../mupdf-1.14.0-source/source/fitz/draw-edge.c
+--- mupdf-1.14.0-source/source/fitz/draw-edge.c	2018-10-04 06:19:28.000000000 -0300
++++ ../mupdf-1.14.0-source/source/fitz/draw-edge.c	2019-03-13 18:46:01.620466262 -0300
+@@ -2,6 +2,7 @@
+ #include "draw-imp.h"
+ 
+ #include <assert.h>
++#include <stdio.h>
+ #include <limits.h>
+ #include <math.h>
+ #include <stdlib.h>
+@@ -15,22 +16,6 @@
+  * See Mike Abrash -- Graphics Programming Black Book (notably chapter 40)
+  */
+ 
+-typedef struct fz_edge_s
+-{
+-	int x, e, h, y;
+-	int adj_up, adj_down;
+-	int xmove;
+-	int xdir, ydir; /* -1 or +1 */
+-} fz_edge;
+-
+-typedef struct fz_gel_s
+-{
+-	fz_rasterizer super;
+-	int cap, len;
+-	fz_edge *edges;
+-	int acap, alen;
+-	fz_edge **active;
+-} fz_gel;
+ 
+ static int
+ fz_reset_gel(fz_context *ctx, fz_rasterizer *rast)
+@@ -88,6 +73,7 @@
+ {
+ 	fz_gel *gel = (fz_gel *)ras;
+ 	fz_edge *edge;
++#if 0
+ 	int dx, dy;
+ 	int winding;
+ 	int width;
+@@ -111,6 +97,7 @@
+ 
+ 	if (y0 < gel->super.bbox.y0) gel->super.bbox.y0 = y0;
+ 	if (y1 > gel->super.bbox.y1) gel->super.bbox.y1 = y1;
++#endif
+ 
+ 	if (gel->len + 1 == gel->cap) {
+ 		int new_cap = gel->cap * 2;
+@@ -120,6 +107,8 @@
+ 
+ 	edge = &gel->edges[gel->len++];
+ 
++#if 0
++
+ 	dy = y1 - y0;
+ 	dx = x1 - x0;
+ 	width = fz_absi(dx);
+@@ -148,6 +137,12 @@
+ 		edge->xmove = (width / dy) * edge->xdir;
+ 		edge->adj_up = width % dy;
+ 	}
++#endif
++
++    edge->x = x0;
++    edge->y = y0;
++    edge->xmove = x1;
++    edge->adj_up = y1;
+ }
+ 
+ static void
+diff -Naur mupdf-1.14.0-source/source/fitz/draw-imp.h ../mupdf-1.14.0-source/source/fitz/draw-imp.h
+--- mupdf-1.14.0-source/source/fitz/draw-imp.h	2018-10-04 06:19:28.000000000 -0300
++++ ../mupdf-1.14.0-source/source/fitz/draw-imp.h	2019-03-13 14:29:26.496940478 -0300
+@@ -470,4 +470,21 @@
+ 
+ void fz_paint_glyph(const unsigned char *colorbv, fz_pixmap *dst, unsigned char *dp, const fz_glyph *glyph, int w, int h, int skip_x, int skip_y, const fz_overprint *eop);
+ 
++typedef struct fz_edge_s
++{
++	int x, e, h, y;
++	int adj_up, adj_down;
++	int xmove;
++	int xdir, ydir; /* -1 or +1 */
++} fz_edge;
++
++typedef struct fz_gel_s
++{
++	fz_rasterizer super;
++	int cap, len;
++	fz_edge *edges;
++	int acap, alen;
++	fz_edge **active;
++} fz_gel;
++
+ #endif
+diff -Naur mupdf-1.14.0-source/source/fitz/draw-path.c ../mupdf-1.14.0-source/source/fitz/draw-path.c
+--- mupdf-1.14.0-source/source/fitz/draw-path.c	2018-10-04 06:19:28.000000000 -0300
++++ ../mupdf-1.14.0-source/source/fitz/draw-path.c	2019-03-13 18:32:54.968927561 -0300
+@@ -785,7 +785,7 @@
+ 	{
+ 		fz_add_vert_rect(ctx, s, ox - dlx, oy, x + dlx, y);
+ 	}
+-	else if (dy == 0)
++	else if (0 && dy == 0)
+ 	{
+ 		fz_add_horiz_rect(ctx, s, ox, oy - dly, x, y + dly);
+ 	}

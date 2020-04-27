@@ -1,0 +1,18 @@
+# Install openjdks and utility
+sudo apt-get install maven openjdk-8-jre
+mvn package
+mvn dependency:build-classpath -Dmdep.outputFile=cp.txt
+# Obtain Oracle jre from Oracle
+sudo tar -C /usr/lib/jvm -zxvf jre-8u251-linux-x64.tar.gz
+sudo mv /usr/lib/jvm/jre1.8.0_251 /usr/lib/jvm/java-8-oracle-amd64
+
+# We have not installed Oracle's JRE on macOS
+# Installing the openjdks with macports
+sudo port install openjdk8 openjdk11
+# and then adjust the paths in the scripts openjdk11.sh and openjdk8.sh
+
+
+# java -cp target/stroke-1.0-SNAPSHOT.jar:$(cat cp.txt) br.impa.app.App
+# openjdk8 uses pisces
+# openjdk11 uses marvin
+# oraclejdk8 uses ductus

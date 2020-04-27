@@ -1,0 +1,11 @@
+prefix=/usr/local
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include/strokers/ghostscript
+
+Name: Ghostscript
+Description: Ghostscript stroker
+Version: 9.26
+Libs: -L${libdir} -lghostscript-stroker -lm
+Libs.private:
+Cflags: -DHAVE_STDINT_H -Dstdio__INCLUDED -I${includedir} -I${includedir}/base

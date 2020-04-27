@@ -1,0 +1,17 @@
+wget https://github.com/ArtifexSoftware/ghostpdl-downloads/releases/download/gs926/ghostscript-9.26.tar.gz
+tar -zxvf ghostscript-9.26.tar.gz
+patch -p0 < common.patch
+cd ghostscript-9.26
+CXXFLAGS=-fpic CFLAGS=-fpic ./configure --disable-openjpeg --with-drivers=PS --disable-fontconfig --disable-compile-inits --disable-contrib --disable-threading --disable-dbus --disable-freetype --disable-cups --disable-gtk --without-libidn --with-libiconv=no --without-libtiff --without-pdftoraster --without-ijs  --without-luratech --without-jbig2dec
+make -j24
+cd obj
+\rm -f inobtokn.o inouparm.o gsiodevs.o
+\rm -f libghostscript-stroker.a
+ar rcu libghostscript-stroker.a *.o
+sudo cp libghostscript-stroker.a /usr/local/lib
+cd ..
+sudo \rm -rf /usr/local/include/strokers/ghostscript
+sudo mkdir -p /usr/local/include/strokers/ghostscript/base
+sudo cp base/*.h /usr/local/include/strokers/ghostscript/base
+sudo cp obj/arch.h /usr/local/include/strokers/ghostscript
+sudo cp ../ghostscript-stroker.pc /usr/local/lib/pkgconfig

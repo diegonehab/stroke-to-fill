@@ -1,0 +1,299 @@
+diff -Naur inkscape-0.92.4/src/2geom/conicsec.h ../inkscape-0.92.4/src/2geom/conicsec.h
+--- inkscape-0.92.4/src/2geom/conicsec.h	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/2geom/conicsec.h	2019-03-15 13:17:57.422538362 -0300
+@@ -500,7 +500,7 @@
+     return out_file;
+ }
+ 
+-};
++}
+ 
+ 
+ #endif // LIB2GEOM_SEEN_CONICSEC_H
+diff -Naur inkscape-0.92.4/src/2geom/path.cpp ../inkscape-0.92.4/src/2geom/path.cpp
+--- inkscape-0.92.4/src/2geom/path.cpp	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/2geom/path.cpp	2019-03-15 13:17:57.422538362 -0300
+@@ -36,9 +36,10 @@
+ #include <2geom/pathvector.h>
+ #include <2geom/transforms.h>
+ #include <2geom/circle.h>
++#include <2geom/elliptical-arc.h>
+ #include <2geom/ellipse.h>
+ #include <2geom/convex-hull.h>
+-#include <2geom/svg-path-writer.h>
++//#include <2geom/svg-path-writer.h>
+ #include <2geom/sweeper.h>
+ #include <algorithm>
+ #include <limits>
+@@ -1106,6 +1107,7 @@
+     return true;
+ }
+ 
++#if 0
+ std::ostream &operator<<(std::ostream &out, Path const &path)
+ {
+     SVGPathWriter pw;
+@@ -1113,6 +1115,7 @@
+     out << pw.str();
+     return out;
+ }
++#endif
+ 
+ } // end namespace Geom
+ 
+diff -Naur inkscape-0.92.4/src/2geom/pathvector.cpp ../inkscape-0.92.4/src/2geom/pathvector.cpp
+--- inkscape-0.92.4/src/2geom/pathvector.cpp	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/2geom/pathvector.cpp	2019-03-15 13:17:57.422538362 -0300
+@@ -34,7 +34,7 @@
+ #include <2geom/affine.h>
+ #include <2geom/path.h>
+ #include <2geom/pathvector.h>
+-#include <2geom/svg-path-writer.h>
++//#include <2geom/svg-path-writer.h>
+ #include <2geom/sweeper.h>
+ 
+ namespace Geom {
+@@ -312,6 +312,7 @@
+     return ret;
+ }
+ 
++#if 0
+ std::ostream &operator<<(std::ostream &out, PathVector const &pv)
+ {
+     SVGPathWriter wr;
+@@ -319,6 +320,7 @@
+     out << wr.str();
+     return out;
+ }
++#endif
+ 
+ } // namespace Geom
+ 
+diff -Naur inkscape-0.92.4/src/2geom/sbasis-geometric.h ../inkscape-0.92.4/src/2geom/sbasis-geometric.h
+--- inkscape-0.92.4/src/2geom/sbasis-geometric.h	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/2geom/sbasis-geometric.h	2019-03-15 13:17:57.430538481 -0300
+@@ -129,7 +129,7 @@
+ std::vector<double> find_normals(Point P, D2<SBasis> const &A);
+ std::vector<double> find_normals_by_vector(Point V, D2<SBasis> const &A);
+ 
+-};
++}
+ 
+ #endif
+ 
+diff -Naur inkscape-0.92.4/src/livarot/Path.cpp ../inkscape-0.92.4/src/livarot/Path.cpp
+--- inkscape-0.92.4/src/livarot/Path.cpp	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/livarot/Path.cpp	2019-03-15 13:18:45.979264856 -0300
+@@ -7,6 +7,8 @@
+  */
+ 
+ #include <glib.h>
++#include <sstream>
++
+ #include "Path.h"
+ #include "livarot/path-description.h"
+ 
+@@ -905,16 +907,19 @@
+     }
+ }
+ 
+-char *Path::svg_dump_path() const
++std::string Path::svg_dump_path() const
+ {
++    std::ostringstream os;
++#if 0
+     Inkscape::SVGOStringStream os;
++#endif
+ 
+     for (int i = 0; i < int(descr_cmd.size()); i++) {
+         Geom::Point const p = (i == 0) ? Geom::Point(0, 0) : PrevPoint(i - 1);
+         descr_cmd[i]->dumpSVG(os, p);
+     }
+-  
+-    return g_strdup (os.str().c_str());
++
++    return os.str();
+ }
+ 
+ // Find out if the segment that corresponds to 'piece' is a straight line
+diff -Naur inkscape-0.92.4/src/livarot/PathCutting.cpp ../inkscape-0.92.4/src/livarot/PathCutting.cpp
+--- inkscape-0.92.4/src/livarot/PathCutting.cpp	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/livarot/PathCutting.cpp	2019-03-15 13:18:45.979264856 -0300
+@@ -18,7 +18,11 @@
+ #include <cstdio>
+ #include <typeinfo>
+ #include "Path.h"
+-#include "style.h"
++#include "glib.h"
++//#include "style.h"
++
++class SPStyle;
++
+ #include "livarot/path-description.h"
+ #include <2geom/pathvector.h>
+ #include <2geom/point.h>
+@@ -28,7 +32,7 @@
+ #include "helper/geom-curves.h"
+ #include "helper/geom.h"
+ 
+-#include "svg/svg.h"
++// #include "svg/svg.h"
+ 
+ void  Path::DashPolyline(float head,float tail,float body,int nbD,float *dashs,bool stPlain,float stOffset)
+ {
+@@ -58,6 +62,10 @@
+ 
+ void  Path::DashPolylineFromStyle(SPStyle *style, float scale, float min_len)
+ {
++    (void) style;
++    (void) scale;
++    (void) min_len;
++#if 0
+     if (!style->stroke_dasharray.values.empty()) {
+ 
+         double dlen = 0.0;
+@@ -90,6 +98,7 @@
+             g_free(dash);
+         }
+     }
++#endif
+ }
+ 
+ 
+diff -Naur inkscape-0.92.4/src/livarot/path-description.cpp ../inkscape-0.92.4/src/livarot/path-description.cpp
+--- inkscape-0.92.4/src/livarot/path-description.cpp	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/livarot/path-description.cpp	2019-03-15 13:18:45.979264856 -0300
+@@ -6,7 +6,7 @@
+     return new PathDescrMoveTo(*this);
+ }
+ 
+-void PathDescrMoveTo::dumpSVG(Inkscape::SVGOStringStream& s, Geom::Point const &/*last*/) const
++void PathDescrMoveTo::dumpSVG(std::ostream& s, Geom::Point const &/*last*/) const
+ {
+     s << "M " << p[Geom::X] << " " << p[Geom::Y] << " ";
+ }
+@@ -22,7 +22,7 @@
+     s << "  m " << p[Geom::X] << " " << p[Geom::Y];
+ }
+ 
+-void PathDescrLineTo::dumpSVG(Inkscape::SVGOStringStream& s, Geom::Point const &/*last*/) const
++void PathDescrLineTo::dumpSVG(std::ostream& s, Geom::Point const &/*last*/) const
+ {
+     s << "L " << p[Geom::X] << " " << p[Geom::Y] << " ";
+ }
+@@ -75,7 +75,7 @@
+     s << "  i " << p[Geom::X] << " " << p[Geom::Y];
+ }
+ 
+-void PathDescrCubicTo::dumpSVG(Inkscape::SVGOStringStream& s, Geom::Point const &last) const
++void PathDescrCubicTo::dumpSVG(std::ostream& s, Geom::Point const &last) const
+ {
+     s << "C "
+       << last[Geom::X] + start[0] / 3 << " "
+@@ -106,11 +106,11 @@
+     tr[4] = tr[5] = 0;
+     start = start * tr;
+     end = end * tr;
+-    
++
+     p = p * t;
+ }
+ 
+-void PathDescrArcTo::dumpSVG(Inkscape::SVGOStringStream& s, Geom::Point const &/*last*/) const
++void PathDescrArcTo::dumpSVG(std::ostream& s, Geom::Point const &/*last*/) const
+ {
+     s << "A "
+       << rx << " "
+@@ -148,11 +148,12 @@
+     return new PathDescrForced(*this);
+ }
+ 
+-void PathDescrClose::dumpSVG(Inkscape::SVGOStringStream& s, Geom::Point const &/*last*/) const
++void PathDescrClose::dumpSVG(std::ostream& s, Geom::Point const &/*last*/) const
+ {
+     s << "z ";
+ }
+ 
++
+ PathDescr *PathDescrClose::clone() const
+ {
+     return new PathDescrClose(*this);
+diff -Naur inkscape-0.92.4/src/livarot/path-description.h ../inkscape-0.92.4/src/livarot/path-description.h
+--- inkscape-0.92.4/src/livarot/path-description.h	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/livarot/path-description.h	2019-03-15 13:18:45.979264856 -0300
+@@ -2,7 +2,8 @@
+ #define SEEN_INKSCAPE_LIVAROT_PATH_DESCRIPTION_H
+ 
+ #include <2geom/point.h>
+-#include "svg/stringstream.h"
++#include <ostream>
++// #include "svg/stringstream.h"
+ 
+ // path description commands
+ /* FIXME: these should be unnecessary once the refactoring of the path
+@@ -35,7 +36,7 @@
+     flags |= t;
+   }
+ 
+-    virtual void dumpSVG(Inkscape::SVGOStringStream &/*s*/, Geom::Point const &/*last*/) const {}
++    virtual void dumpSVG(std::ostream& /*s*/, Geom::Point const &/*last*/) const {}
+     virtual PathDescr *clone() const = 0;
+     virtual void transform(Geom::Affine const &/*t*/) {}
+     virtual void dump(std::ostream &/*s*/) const {}
+@@ -51,7 +52,7 @@
+   PathDescrMoveTo(Geom::Point const &pp)
+       : PathDescr(descr_moveto), p(pp) {}
+ 
+-  void dumpSVG(Inkscape::SVGOStringStream &s, Geom::Point const &last) const;
++  void dumpSVG(std::ostream &s, Geom::Point const &last) const;
+   PathDescr *clone() const;
+   void transform(Geom::Affine const &t);
+   void dump(std::ostream &s) const;
+@@ -64,7 +65,7 @@
+   PathDescrLineTo(Geom::Point const &pp)
+     : PathDescr(descr_lineto), p(pp) {}
+ 
+-  void dumpSVG(Inkscape::SVGOStringStream &s, Geom::Point const &last) const;
++  void dumpSVG(std::ostream &s, Geom::Point const &last) const;
+   PathDescr *clone() const;
+   void transform(Geom::Affine const &t);
+   void dump(std::ostream &s) const;
+@@ -107,7 +108,7 @@
+   PathDescrCubicTo(Geom::Point const &pp, Geom::Point const &s, Geom::Point const& e)
+     : PathDescr(descr_cubicto), p(pp), start(s), end(e) {}
+ 
+-  void dumpSVG(Inkscape::SVGOStringStream &s, Geom::Point const &last) const;
++  void dumpSVG(std::ostream &s, Geom::Point const &last) const;
+   PathDescr *clone() const;
+   void transform(Geom::Affine const &t);
+   void dump(std::ostream &s) const;
+@@ -123,7 +124,7 @@
+   PathDescrArcTo(Geom::Point const &pp, double x, double y, double a, bool l, bool c)
+     : PathDescr(descr_arcto), p(pp), rx(x), ry(y), angle(a), large(l), clockwise(c) {}
+ 
+-  void dumpSVG(Inkscape::SVGOStringStream &s, Geom::Point const &last) const;
++  void dumpSVG(std::ostream &s, Geom::Point const &last) const;
+   PathDescr *clone() const;
+   void transform(Geom::Affine const &t);
+   void dump(std::ostream &s) const;
+@@ -152,7 +153,7 @@
+ {
+   PathDescrClose() : PathDescr(descr_close) {}
+ 
+-  void dumpSVG(Inkscape::SVGOStringStream &s, Geom::Point const &last) const;
++  void dumpSVG(std::ostream &s, Geom::Point const &last) const;
+   PathDescr *clone() const;
+ 
+   /* FIXME: not sure whether _forced should have a point associated with it;
+diff -Naur inkscape-0.92.4/src/livarot/Path.h ../inkscape-0.92.4/src/livarot/Path.h
+--- inkscape-0.92.4/src/livarot/Path.h	2019-01-15 02:29:27.000000000 -0200
++++ ../inkscape-0.92.4/src/livarot/Path.h	2019-03-15 13:18:45.979264856 -0300
+@@ -219,7 +219,7 @@
+   void             ConvertPositionsToForced(int nbPos,cut_position* poss);
+ 
+   void  Affiche();
+-  char *svg_dump_path() const;
++  std::string svg_dump_path() const;
+   
+   bool IsLineSegment(int piece);
+ 

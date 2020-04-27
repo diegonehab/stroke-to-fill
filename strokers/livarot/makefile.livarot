@@ -1,0 +1,114 @@
+UNAME:=$(shell uname)
+
+CXX_Linux=g++
+CXX_Darwin=clang++
+CC_Linux=gcc
+CC_Darwin=clang
+CXX:=$(CXX_$(UNAME))
+CC:=$(CC_$(UNAME))
+
+PKG:=pkg-config
+
+GSLINC:=$(shell $(PKG) --cflags gsl)
+GSLLIB:=$(shell $(PKG) --libs gsl)
+GLIB2INC:=$(shell $(PKG) --cflags glib-2.0)
+GLIB2LIB:=$(shell $(PKG) --libs glib-2.0)
+
+LIBS=$(GSLLIB) $(GLIB2LIB)
+DEF=
+WAR=
+INC=-Isrc -Isrc/livarot $(GSLINC) $(GLIB2INC)
+CXXFLAGS=$(INC) $(DEF) -O4 -std=c++14 -Wall -W -pedantic -fpic
+CFLAGS=$(INC) $(DEF) -O2 -Wall -W -pedantic -fpic
+
+LIVAROT_SRC := \
+	src/livarot/AlphaLigne.cpp \
+	src/livarot/AVL.cpp \
+	src/livarot/BitLigne.cpp \
+	src/livarot/float-line.cpp \
+	src/livarot/int-line.cpp \
+	src/livarot/PathConversion.cpp \
+	src/livarot/Path.cpp \
+	src/livarot/PathCutting.cpp \
+	src/livarot/path-description.cpp \
+	src/livarot/PathOutline.cpp \
+	src/livarot/PathSimplify.cpp \
+	src/livarot/PathStroke.cpp \
+	src/livarot/Shape.cpp \
+	src/livarot/ShapeDraw.cpp \
+	src/livarot/ShapeMisc.cpp \
+	src/livarot/ShapeRaster.cpp \
+	src/livarot/ShapeSweep.cpp \
+	src/livarot/sweep-event.cpp \
+	src/livarot/sweep-tree.cpp \
+	src/livarot/sweep-tree-list.cpp
+
+GEOM_SRC := \
+	src/2geom/numeric/matrix.cpp \
+	src/2geom/affine.cpp \
+	src/2geom/basic-intersection.cpp \
+	src/2geom/bezier-clipping.cpp \
+	src/2geom/bezier.cpp \
+	src/2geom/bezier-curve.cpp \
+	src/2geom/bezier-utils.cpp \
+	src/2geom/circle.cpp \
+	src/2geom/conicsec.cpp \
+	src/2geom/conic_section_clipper_impl.cpp \
+	src/2geom/convex-hull.cpp \
+	src/2geom/coord.cpp \
+	src/2geom/crossing.cpp \
+	src/2geom/curve.cpp \
+	src/2geom/d2-sbasis.cpp \
+	src/2geom/ellipse.cpp \
+	src/2geom/elliptical-arc.cpp \
+	src/2geom/elliptical-arc-from-sbasis.cpp \
+	src/2geom/geom.cpp \
+	src/2geom/intersection-graph.cpp \
+	src/2geom/line.cpp \
+	src/2geom/nearest-time.cpp \
+	src/2geom/path.cpp \
+	src/2geom/path-intersection.cpp \
+	src/2geom/path-sink.cpp \
+	src/2geom/pathvector.cpp \
+	src/2geom/piecewise.cpp \
+	src/2geom/point.cpp \
+	src/2geom/polynomial.cpp \
+	src/2geom/rect.cpp \
+	src/2geom/recursive-bezier-intersection.cpp \
+	src/2geom/sbasis-2d.cpp \
+	src/2geom/sbasis.cpp \
+	src/2geom/sbasis-geometric.cpp \
+	src/2geom/sbasis-math.cpp \
+	src/2geom/sbasis-poly.cpp \
+	src/2geom/sbasis-roots.cpp \
+	src/2geom/sbasis-to-bezier.cpp \
+	src/2geom/solve-bezier.cpp \
+	src/2geom/solve-bezier-one-d.cpp \
+	src/2geom/solve-bezier-parametric.cpp \
+	src/2geom/sweep-bounds.cpp \
+	src/2geom/toposweep.cpp \
+	src/2geom/transforms.cpp \
+	src/2geom/utils.cpp
+
+HELPER_SRC := src/helper/geom.cpp \
+	src/helper/geom-nodetype.cpp \
+	src/helper/geom-pathstroke.cpp
+
+OBJS:= \
+ $(LIVAROT_SRC:%.cpp=%.o) \
+ $(GEOM_SRC:%.cpp=%.o) \
+ $(HELPER_SRC:%.cpp=%.o)
+
+liblivarot-stroker.a: $(OBJS)
+	ar rc $@ $^
+	ranlib $@
+
+%.o: %.cpp
+	echo $(CXX) $(CXXFLAGS) -o $@ -c $<
+	$(CXX) $(CXXFLAGS) -o $@ -c $<
+
+%.o: %.c
+	$(CC) $(CFLAGS) -o $@ -c $<
+
+clean:
+	\rm -f $(OBJS)

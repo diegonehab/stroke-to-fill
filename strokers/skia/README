@@ -1,0 +1,22 @@
+sudo apt-get install libwebp-dev clang-9 libjpeg-turbo8-dev python
+sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9
+100
+sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 100
+
+git clone --depth 1 'https://chromium.googlesource.com/chromium/tools/depot_tools.git'
+export PATH="${PWD}/depot_tools:${PATH}"
+git clone --depth 1 https://skia.googlesource.com/skia.git
+cd skia
+python tools/git-sync-deps
+bin/gn gen out/Static --args='is_official_build=true cc="clang-9" cxx="clang++-9"'
+ninja -C out/Static
+sudo mkdir /usr/local/include/skia
+sudo cp -r include /usr/local/include/skia
+sudo mkdir -p /usr/local/include/skia/third_party/skcms
+sudo cp third_party/skcms/*.h /usr/local/include/skia/third_party/skcms
+sudo mkdir /usr/local/lib/skia
+sudo cp out/Static/*.a /usr/local/lib/skia
+sudo cp ../skia.pc /usr/local/lib/pkgconfig
+
+#mac
+bin/gn gen out/Static --args='is_official_build=true skia_use_system_libjpeg_turbo=false skia_use_system_libwebp=false cc="clang" cxx="clang++" extra_cflags_c=["-I/opt/local/include","-I/opt/local/include/harfbuzz"] extra_cflags_cc=["-I/opt/local/include", "-I/opt/local/include/harfbuzz"] extra_ldflags=["-L/opt/local/lib"]'

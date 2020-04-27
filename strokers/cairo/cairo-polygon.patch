@@ -1,0 +1,22 @@
+--- cairo-polygon.c	2016-12-08 17:31:51.000000000 -0200
++++ cairo-polygon.c-modified	2017-04-06 01:55:28.000000000 -0300
+@@ -293,7 +293,7 @@
+ {
+     cairo_edge_t *edge;
+ 
+-    assert (top < bottom);
++    assert (top <= bottom);
+ 
+     if (unlikely (polygon->num_edges == polygon->edges_size)) {
+ 	if (! _cairo_polygon_grow (polygon))
+@@ -501,8 +501,8 @@
+ 			 int dir)
+ {
+     /* drop horizontal edges */
+-    if (p1->y == p2->y)
+-	return;
++//    if (p1->y == p2->y)
++//	return;
+ 
+     if (p1->y > p2->y) {
+ 	const cairo_point_t *t;

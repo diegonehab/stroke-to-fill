@@ -1,0 +1,12 @@
+wget https://mupdf.com/downloads/archive/mupdf-1.14.0-source.tar.xz
+tar -Jxvf mupdf-1.14.0-source.tar.xz
+patch -p0 < combined.patch
+cd mupdf-1.14.0-source
+HAVE_GLFW=no HAVE_X11=no XCFLAGS="-fPIC -DNO_ICC" verbose=yes make libs
+sudo cp build/release/libmupdf.a /usr/local/lib/libmupdf-stroker.a
+sudo cp build/release/libmupdf-third.a /usr/local/lib
+sudo \rm -rf /usr/local/include/strokers/mupdf
+sudo cp -r include/mupdf /usr/local/include/strokers
+sudo mkdir -p /usr/local/include/strokers/mupdf/private/fitz
+sudo cp source/fitz/*.h /usr/local/include/strokers/mupdf/private/fitz/
+sudo cp ../mupdf-stroker.pc /usr/local/lib/pkgconfig
