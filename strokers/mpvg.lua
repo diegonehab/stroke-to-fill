@@ -172,7 +172,7 @@ local function make_mpvg_path_f_to_input_path(forward)
 end
 
 local function to_mpvg_xform(xf)
-    return mpvg.xform.affine(table.unpack(xf))
+    return mpvg.xform.affine(table.unpack(xf:toxform()))
 end
 
 local function from_mpvg_xform(xf)
