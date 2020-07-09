@@ -1,6 +1,5 @@
 sudo apt-get install libwebp-dev clang-9 libjpeg-turbo8-dev python
-sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9
-100
+sudo update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-9 100
 sudo update-alternatives --install /usr/bin/clang clang /usr/bin/clang-9 100
 
 git clone --depth 1 'https://chromium.googlesource.com/chromium/tools/depot_tools.git'
