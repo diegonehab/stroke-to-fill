@@ -37,4 +37,4 @@ ffmpeg -y -i fun/png/compare-%04d.png -c:v libx264 -pix_fmt yuv420p -preset:v sl
 
 ffmpeg -y -i fun/png/outline-%04d.png -c:v libx264 -pix_fmt yuv420p -preset:v slow -profile:v baseline -crf 20 -vf 'crop=trunc(iw/2)*2:trunc(ih/2)*2' fun/${stroker_test}_parameter_${stroker}_outline.m4v
 
-rm fun/png/bare-0*.png fun/png/compare-0*png fun/png/outline-0*png
+rm -f fun/png/bare-0*.png fun/png/compare-0*png fun/png/outline-0*png
