@@ -17,7 +17,8 @@
 
 local strokers = require"strokers"
 
-local filter = require"filterx"
+local filterx = require"filterx"
+local filter = require"filter"
 local bezier = require"bezier"
 
 strokers.mpvg = true
@@ -91,6 +92,8 @@ Optional arguments:
 
   -idempotent                     fill with opaque color
 
+  -no-idempotent                  fill with transparent color
+
   -split                          split output outlines into independent paths
 
   -no-background                  render transparent background
@@ -131,6 +134,19 @@ Optional arguments:
   -resets-on-move                 reset dash pattern for between outlines
 
   -dashes:<dash array>            comma-separated list of dash lengths
+
+  -outline-width:<value>          stroke outline width in pixels
+
+  -viewport-width:<value>         width of output viewport
+
+  -viewport-border:<value>        viewport border in units of viewport width
+
+  -animate-outline                generate animation of outline
+
+  -animate-outline-speed          px per frame in animation
+
+  -animate-fill                   generate animation of fill
+
 ]])
     os.exit()
 end
@@ -139,14 +155,23 @@ local quiet = false
 local arc_length = false
 local generatrix = false
 local reverse = false
+local outline_width = 1
 local no_background = false
 local no_fill = false
 local idempotent = false
+local no_idempotent = false
 local split = false
+local differences = false
 local outline = false
+local animate_outline = false
+local animate_outline_speed = 20
+local animate_fill = false
+local precomputed_scale = 1
 local width_scale = 1
 local inner_points = false
 local interpolated_points = false
+local inner_input_points = false
+local interpolated_input_points = false
 local initial_cap
 local terminal_cap
 local join
@@ -162,6 +187,8 @@ local testname, strokername, outputname
 local drivername = "svg"
 local precomputed
 local parameter = 0.5
+local viewport_border = 1/8
+local viewport_width = 512
 
 local options = {
     { "^%-help$", function(w)
@@ -197,6 +224,11 @@ local options = {
         arc_length = true
         return true
     end },
+    { "^%-differences$", function(o)
+        if not o then return false end
+        differences = true
+        return true
+    end },
     { "^%-split$", function(o)
         if not o then return false end
         split = true
@@ -208,14 +240,35 @@ local options = {
         interpolated_points = true
         return true
     end },
+    { "^%-input%-control%-points$", function(o)
+        if not o then return false end
+        inner_input_points = true
+        interpolated_input_points = true
+        return true
+    end },
     { "^%-interpolated%-points$", function(o)
         if not o then return false end
         interpolated_points = true
         return true
     end },
+    { "^%-interpolated%-input%-points$", function(o)
+        if not o then return false end
+        interpolated_input_points = true
+        return true
+    end },
     { "^%-outline$", function(o)
         if not o then return false end
         outline = true
+        return true
+    end },
+    { "^%-animate%-outline$", function(o)
+        if not o then return false end
+        animate_outline = true
+        return true
+    end },
+    { "^%-animate%-fill$", function(o)
+        if not o then return false end
+        animate_fill = true
         return true
     end },
     { "^%-reverse$", function(o)
@@ -238,6 +291,11 @@ local options = {
         idempotent = true
         return true
     end },
+    { "^%-no%-idempotent$", function(o)
+        if not o then return false end
+        no_idempotent = true
+        return true
+    end },
     { "^%-stroker%:(.*)$", function(o)
         if not o or #o < 1 then return false end
         strokername = o
@@ -253,6 +311,46 @@ local options = {
         width_scale = tonumber(o)
         if not width_scale then
             error("invalid width scale")
+        end
+        return true
+    end },
+    { "^%-precomputed%-scale%:(.*)$", function(o)
+        if not o or #o < 1 then return false end
+        precomputed_scale = tonumber(o)
+        if not precomputed_scale then
+            error("invalid precomputed scale")
+        end
+        return true
+    end },
+    { "^%-outline%-width%:(.*)$", function(o)
+        if not o or #o < 1 then return false end
+        outline_width = tonumber(o)
+        if not outline_width then
+            error("invalid outline width")
+        end
+        return true
+    end },
+    { "^%-animate%-outline%-speed%:(.*)$", function(o)
+        if not o or #o < 1 then return false end
+        animate_outline_speed = tonumber(o)
+        if not animate_outline_speed then
+            error("invalid outline animation speed")
+        end
+        return true
+    end },
+    { "^%-viewport%-width%:(.*)$", function(o)
+        if not o or #o < 1 then return false end
+        viewport_width = math.ceil(tonumber(o))
+        if not viewport_width then
+            error("invalid viewport width")
+        end
+        return true
+    end },
+    { "^%-viewport%-border%:(.*)$", function(o)
+        if not o or #o < 1 then return false end
+        viewport_border = tonumber(o)
+        if not viewport_border then
+            error("invalid viewport width")
         end
         return true
     end },
@@ -549,6 +647,31 @@ local tests = {
     end,
 	["parallel_miter_clip"] = {path{M,0,0,10,0,5,0}, 1, stroke_style():joined(stroke_join.miter_clip):miter_limited(2)},
 	["parallel_miter_or_bevel"] = {path{M,0,0,10,0,5,0}, 1, stroke_style():joined(stroke_join.miter_or_bevel):miter_limited(2)},
+    ["zigzagp"] = function(v)
+        local x0 = 10
+        local x = x0
+        local dx = 30
+        local y0 = 10
+        local y1 = 20
+        local t = {M, x, y0}
+        local n = 12
+        for i = 0, n do
+            local u = i/n
+            local v0 = y0*(1-u)+y1*u
+            local v1 = y1*(1-u)+y0*u
+            if i %2 == 1 then
+                append(t, {C, x+dx/3, y1, x+2*dx/3, v0, x+dx, y0})
+            else
+                append(t, {L, x+dx, y1})
+            end
+            x = x + dx
+        end
+        local sw = 60
+        local s = (1-v)*(1.1) + v*(0.525)
+        local w = 2*x0+(n+1)*dx
+        local h = y1+y0
+        return {path(t):scaled(s, 1, w/2, h/2), 60, stroke_style():joined(stroke_join.round) , {xmin = -sw/2, ymin = -sw/2, ymax = h+sw/2, xmax = w+sw/2} }
+    end,
     ["zigzag"] = function(v)
         local x = 10
         local dx = 30
@@ -568,7 +691,13 @@ local tests = {
             x = x + dx
         end
         return {path(t), 60, stroke_style():joined(stroke_join.round) }
-    end
+    end,
+    ["talk0"] = {path"M 28.778009,117.86509 190.92117,341.03638 190.92153,65.18165 28.777787,288.35252 291.13142,203.10934 Z M 540.17648,201.30433 A 83.288646,83.288641 0 0 1 456.88784,284.59298 83.288646,83.288641 0 0 1 373.5992,201.30433 83.288646,83.288641 0 0 1 456.88784,118.01569 83.288646,83.288641 0 0 1 540.17648,201.30433 Z M 581.363,201.30433 A 124.47516,124.47516 0 0 1 456.88784,325.77949 124.47516,124.47516 0 0 1 332.41268,201.30433 124.47516,124.47516 0 0 1 456.88784,76.82918 124.47516,124.47516 0 0 1 581.363,201.30433 Z M 738.07885,329.59452 C 616.8906,330.20413 587.1213,96.62474 661.94069,96.62474 736.76008,96.62475 804.68745,223.95596 737.4281,223.52168 670.16874,223.0874 739.2097,96.62474 810.96325,96.62475 882.71679,96.62476 859.2671,328.98491 738.07885,329.59452 Z", 2, stroke_style(), {xmin = 0, xmax = 892.8, ymin = 0, ymax = 438.72}},
+    ["talk1"] = {path"M 28.7845,117.94 291.197,203.239 28.7842,288.537 190.964,65.223 V 341.254 Z M 332.487,201.433 A 124.555,124.503 89.9673 0 0 456.99,325.987 124.503,124.555 0 0 0 581.493,201.433 124.503,124.555 0.0044 0 0 456.99,76.878 124.503,124.555 0.048 0 0 332.487,201.433 Z M 540.297,201.433 A 83.3418,83.3074 89.9098 0 1 456.99,284.775 83.3418,83.3073 89.9976 0 1 373.683,201.433 83.3073,83.3418 0.0316 0 1 456.99,118.091 83.3074,83.3418 0.0512 0 1 540.297,201.433 Z M 738.244,329.805 C 859.46,329.195 882.915,96.686 811.145,96.686 739.375,96.686 670.319,223.23 737.593,223.664 804.868,224.099 736.925,96.686 662.089,96.686 587.253,96.686 617.029,330.415 738.244,329.805 Z ", 2, stroke_style(), {xmin = 0, xmax = 892.8, ymin = 0, ymax = 438.72}},
+    --["talk2"] = {path"M 140.637 50.2785 C 136.795 57.0195 131.895 63.0545 125.543 67.4963 119.011 72.1122 110.795 74.8814 102.763 73.624 97.2295 72.7842 92.1065 69.7697 88.9798 65.0384", 28.442710876465, stroke_style(), {xmin = 0, ymin = 0, xmax = 236.22, ymax = 99.75}},
+    --["talk3"] = {path"M 140.637 50.2785 C 136.795 57.0195 131.895 63.0545 125.543 67.4963 119.011 72.1122 110.795 74.8814 102.763 73.624 97.2295 72.7842 92.1065 69.7697 88.9798 65.0384", 145.521, stroke_style(), {xmin = 0, ymin = 0, xmax = 236.22, ymax = 99.75}},
+    ["talk2"] = {path"M 140.71144,50.207502 C 125.33922,77.122871 98.552892,79.50314 88.979771,65.038416", 28.442710876465, stroke_style(), {xmin = 0, ymin = 0, xmax = 236.22, ymax = 99.75}},
+    ["talk3"] = {path"M 140.71144,50.207502 C 125.33922,77.122871 98.552892,79.50314 88.979771,65.038416", 145.521, stroke_style(), {xmin = 0, ymin = 0, xmax = 236.22, ymax = 99.75}},
 }
 
 if testname == "list" then
@@ -603,17 +732,19 @@ local stroker = strokers[strokername]
     or error(string.format("stroker '%s' not found", tostring(strokername)))
 
 if strokername == "openvg_ri" then
-    idempotent = true
+    if not no_idempotent then
+        idempotent = true
+    end
     split = true
 end
 
 local stroke_color = rgba(1, 0, 0, 0.5)
 
+local generatrix_color = rgb8(136, 49, 0)
+
 if idempotent then
     stroke_color = rgba(1, 0.5, 0.5, 1)
 end
-
-
 
 local function newbbox()
 	return {
@@ -731,8 +862,8 @@ end
 -- acquire bounding box of path
 local bbox = newbbox()
 test_path:as_path_data():iterate(
-    filter.xform(test_path:get_xf(), filter.monotonize(bbox)))
-bbox = test_bbox or bbox
+    filter.make_input_path_f_xform(test_path:get_xf(),
+    filterx.monotonize(bbox)))
 -- expand to include stroke
 local half_stroke_width = .5*test_stroke_width
 bbox.xmin = bbox.xmin-half_stroke_width
@@ -740,19 +871,19 @@ bbox.ymin = bbox.ymin-half_stroke_width
 bbox.xmax = bbox.xmax+half_stroke_width
 bbox.ymax = bbox.ymax+half_stroke_width
 -- add a border
-local viewport_border = 64
-local viewport_width = 512
 local bbox_width = bbox.xmax-bbox.xmin
-local bbox_border = viewport_border*bbox_width/viewport_width
+local bbox_border = viewport_border*bbox_width
 bbox.xmin = bbox.xmin-bbox_border
 bbox.ymin = bbox.ymin-bbox_border
 bbox.xmax = bbox.xmax+bbox_border
 bbox.ymax = bbox.ymax+bbox_border
+-- allow bbox override
+bbox = test_bbox or bbox
 -- compute viewport to preserve aspect ratio
 bbox_width = bbox.xmax-bbox.xmin
 bbox_height = bbox.ymax-bbox.ymin
 local viewport_height = math.ceil(viewport_width*bbox_height/bbox_width)
-local vp = viewport(0, 0, viewport_width, viewport_height)
+local vp = viewport(0, 0, math.ceil(viewport_width), math.ceil(viewport_height))
 -- transform path to viewport coordinates
 test_path = test_path:windowviewport(window(bbox.xmin, bbox.ymax, bbox.xmax, bbox.ymin), vp)
 test_stroke_width = test_stroke_width*viewport_width/bbox_width
@@ -775,18 +906,24 @@ if precomputed then
     if #ps > 1 then
         stderr("precomputed rvg contains multiple painted elements.\nkeeping topmost")
     end
-    stroked_shape = ps[#ps]
+    if precomputed_scale ~= 1 then
+        local pd = path_data()
+        ps[#ps]:as_path_data():iterate(filter.make_input_path_f_xform(
+            scaling(precomputed_scale), pd))
+        stroked_shape = path(pd)
+    else
+        stroked_shape = ps[#ps]
+    end
 else
-    stroked_shape = stroker(test_path, identity(), test_stroke_width*width_scale,
-        test_stroke_style)
+    stroked_shape = stroker(test_path, identity(),
+        test_stroke_width*width_scale, test_stroke_style)
 end
+
+local rvg_stroked_shape
 
 if flip then
     stroked_shape = stroked_shape:translated(0,-viewport_height):scaled(1, -1)
 end
-
--- stroke width at 1px
-local sw = 1
 
 -- empty scene
 local s = {}
@@ -794,6 +931,19 @@ local s = {}
 -- add white background
 if not no_background then
     s[#s+1] = fill(rect(0, 0, viewport_width, viewport_height), color.white)
+end
+
+-- add differences relative to rvg
+if differences then
+    rvg_stroked_shape = strokers.rvg(test_path, identity(),
+        test_stroke_width*width_scale, test_stroke_style)
+    if flip then
+        rvg_stroked_shape = rvg_stroked_shape:
+            translated(0,-viewport_height):scaled(1, -1)
+    end
+    s[#s+1] = clip(nzpunch(rvg_stroked_shape), fill(stroked_shape, color.red))
+    s[#s+1] = clip(nzpunch(stroked_shape), fill(rvg_stroked_shape, color.red))
+    s[#s+1] = fill(stroked_shape, stroke_color)
 end
 
 if split then
@@ -810,7 +960,7 @@ if split then
                 s[#s+1] = fill(p, stroke_color)
             end
             if outline then
-                s[#s+1] = fill(p:stroked(sw), color.black)
+                s[#s+1] = fill(p:stroked(outline_width), color.black)
             end
             pd = path_data()
         end,
@@ -821,7 +971,7 @@ if split then
                 s[#s+1] = fill(p, stroke_color)
             end
             if outline then
-                s[#s+1] = fill(p:stroked(sw), color.black)
+                s[#s+1] = fill(p:stroked(outline_width), color.black)
             end
             pd = path_data()
         end
@@ -841,16 +991,16 @@ else
         s[#s+1] = fill(stroked_shape, stroke_color)
     end
     if outline then
-        s[#s+1] = fill(stroked_shape:stroked(sw), color.black)
+        s[#s+1] = fill(stroked_shape:stroked(outline_width), color.black)
     end
 end
 
--- add interpolating control points in red, and
+-- add interpolating control points in black, and
 -- non-interpolating in darkgreen
 if inner_points or interpolated_points then
-    local r = 2*sw
+    local r = 2*outline_width
     stroked_shape:as_path_data():iterate(
-        filter.xform(stroked_shape:get_xf(), {
+        filter.make_input_path_f_xform(stroked_shape:get_xf(), {
         begin_contour = function(self, x, y)
             s[#s+1] = fill(circle(x, y, r), color.black)
         end,
@@ -883,9 +1033,195 @@ if inner_points or interpolated_points then
     }))
 end
 
+-- add interpolating control points in , and
+-- non-interpolating in darkgreen
+if inner_input_points or interpolated_input_points then
+    local r = 2*outline_width
+    test_path:as_path_data():iterate(
+        filter.make_input_path_f_xform(test_path:get_xf(), {
+        begin_contour = function(self, x, y)
+            s[#s+1] = fill(circle(x, y, r), generatrix_color)
+        end,
+        linear_segment = function(self, x0, y0, x1, y1)
+            s[#s+1] = fill(circle(x1, y1, r), generatrix_color)
+        end,
+        quadratic_segment = function(self, x0, y0, x1, y1, x2, y2)
+            if inner_points then
+                s[#s+1] = fill(circle(x1, y1, r), color.darkred)
+            end
+            s[#s+1] = fill(circle(x2, y2, r), generatrix_color)
+        end,
+        cubic_segment = function(self, x0, y0, x1, y1, x2, y2, x3, y3)
+            if inner_points then
+                s[#s+1] = fill(circle(x1, y1, r), color.darkred)
+                s[#s+1] = fill(circle(x2, y2, r), color.darkred)
+            end
+            s[#s+1] = fill(circle(x3, y3, r), generatrix_color)
+        end,
+        rational_quadratic_segment = function(self, x0, y0, x1, y1, w1, x2, y2)
+            if inner_points then
+                s[#s+1] = fill(circle(x1/w1, y1/w1, r), color.darkred)
+            end
+            s[#s+1] = fill(circle(x2, y2, r), generatrix_color)
+        end,
+        end_open_contour = function(self, x, y)
+        end,
+        end_closed_contour = function(self, x, y)
+        end,
+    }))
+end
+
+
+local function save(s, i, fmt)
+    local file = io.open(string.format(fmt, i), "wb")
+    render(accelerate(scene(s), wnd, vp), wnd, vp, file)
+    stderr("%u", i)
+    file:close()
+end
+
+if animate_outline then
+    local segpaths = {}
+    local xp, yp
+    local xf = stroked_shape:get_xf()
+    local splitter = {
+        begin_contour = function(self, x0, y0)
+        end,
+        end_open_contour = function(self, x0, y0)
+        end,
+        end_closed_contour = function(self, x0, y0)
+        end,
+        linear_segment = function(self, x0, y0, x1, y1)
+            local pd = path_data()
+            pd:begin_contour(x0, y0)
+            pd:linear_segment(x0, y0, x1, y1)
+            pd:end_open_contour(x1, y1)
+            segpaths[#segpaths+1] = { path(pd):transformed(xf) }
+        end,
+        quadratic_segment = function(self, x0, y0, x1, y1, x2, y2)
+            local pd = path_data()
+            pd:begin_contour(x0, y0)
+            pd:quadratic_segment(x0, y0, x1, y1, x2, y2)
+            pd:end_open_contour(x2, y2)
+            segpaths[#segpaths+1] = { path(pd):transformed(xf) }
+        end,
+        rational_quadratic_segment = function(self, x0, y0, x1, y1, w1, x2, y2)
+            local pd = path_data()
+            pd:begin_contour(x0, y0)
+            pd:rational_quadratic_segment(x0, y0, x1, y1, w1, x2, y2)
+            pd:end_open_contour(x2, y2)
+            segpaths[#segpaths+1] = { path(pd):transformed(xf) }
+        end,
+        cubic_segment = function(self, x0, y0, x1, y1, x2, y2, x3, y3)
+            local pd = path_data()
+            pd:begin_contour(x0, y0)
+            pd:cubic_segment(x0, y0, x1, y1, x2, y2, x3, y3)
+            pd:end_open_contour(x3, y3)
+            segpaths[#segpaths+1] = { path(pd):transformed(xf) }
+        end,
+    }
+    stroked_shape:as_path_data():iterate(splitter)
+    local total_length = strokers.arc_length(stroked_shape)
+    local running_length = 0
+    for i, p in ipairs(segpaths) do
+        running_length = running_length + strokers.arc_length(p[1])
+        p[2] = running_length
+    end
+    local co =  rgba(0,0,0,0.5)
+    local frames = math.ceil(total_length/animate_outline_speed)
+    local fmt = "outline-%06u.svg"
+    for i = 1, frames do
+        local end_length = i*total_length/frames
+        local j = 1
+        local s = {}
+        if not no_background then
+            s[#s+1] =
+                fill(rect(0, 0, viewport_width, viewport_height), color.white)
+        end
+        s[#s+1] = fill(stroked_shape, stroke_color)
+        local done = 0
+        while segpaths[j] and segpaths[j][2] < end_length do
+            s[#s+1] = fill(segpaths[j][1]:stroked(outline_width):joined(stroke_join.round), co)
+            done = segpaths[j][2]
+            j = j + 1
+        end
+        if segpaths[j] then
+            local all = segpaths[j][2]/(outline_width)
+            local missing = (end_length-done)/(outline_width)
+            s[#s+1] = fill(segpaths[j][1]:stroked(outline_width):joined(stroke_join.round):capped(stroke_cap.round):dashed{0, missing, 2, all}, color.white)
+            s[#s+1] = fill(segpaths[j][1]:stroked(outline_width):joined(stroke_join.round):capped(stroke_cap.round):dashed{missing, all}, co)
+        end
+        if generatrix then
+            s[#s+1] = fill(test_path:stroked(outline_width):joined(stroke_join.round), generatrix_color)
+        end
+        save(s, i, fmt)
+    end
+end
+
+if animate_fill then
+    local pd
+    local fills = {}
+    local splitter = setmetatable({
+        begin_contour = function(self, x0, y0)
+            pd = path_data()
+            pd:begin_contour(x0, y0)
+        end,
+        end_open_contour = function(self, x0, y0)
+            pd:end_open_contour(x0, y0)
+            fills[#fills+1] = path(pd)
+            pd = path_data()
+        end,
+        end_closed_contour = function(self, x0, y0)
+            pd:end_closed_contour(x0, y0)
+            fills[#fills+1] = path(pd)
+            pd = path_data()
+        end
+    }, {
+        __index = function(self, method)
+            local new = function(self, ...)
+                pd[method](pd, ...) end
+            self[method] = new
+            return new
+        end
+    })
+    stroked_shape:as_path_data():iterate(splitter)
+    local fmt = "fill-%06u.svg"
+    for i = 1, #fills do
+        local s = {}
+        if not no_background then
+            s[#s+1] =
+                fill(rect(0, 0, viewport_width, viewport_height), color.white)
+        end
+        for j = 1, i do
+            local p = fills[j]
+            s[#s+1] = fill(p, stroke_color)
+        end
+        s[#s+1] = fill(fills[i]:stroked(outline_width):joined(stroke_join.round):capped(stroke_cap.round), color.black)
+        if generatrix then
+            s[#s+1] = fill(test_path:stroked(outline_width):joined(stroke_join.round), generatrix_color)
+        end
+        save(s, i, fmt)
+    end
+    local s = {}
+    if not no_background then
+        s[#s+1] =
+            fill(rect(0, 0, viewport_width, viewport_height), color.white)
+    end
+    s[#s+1] = fill(stroked_shape, stroke_color)
+    local co =  rgba(0,0,0,0.5)
+    for i = 1, #fills do
+        s[#s+1] = fill(fills[i]:stroked(outline_width):joined(stroke_join.round):capped(stroke_cap.round), co)
+    end
+   -- s[#s+1] = fill(stroked_shape:stroked(outline_width):
+    --    joined(stroke_join.round):capped(stroke_cap.round), color.black)
+    if generatrix then
+        s[#s+1] = fill(test_path:stroked(outline_width):joined(stroke_join.round), generatrix_color)
+    end
+    save(s , #fills+1, fmt)
+end
+
 -- add input path on top in blue
 if generatrix then
-    s[#s+1] = fill(test_path:stroked(sw), rgb8(136,49,0))
+    s[#s+1] = fill(test_path:stroked(outline_width):joined(stroke_join.round), generatrix_color)
 end
 
 local out = io.stdout
