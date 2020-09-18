@@ -14,6 +14,7 @@
 // Contact information: diego.nehab@gmail.com
 //
 #include "rvg-lua.h"
+#include "rvg-lua-xform.h"
 #include "rvg-unorm.h"
 
 #include "rvg-lua-winding-rule.h"

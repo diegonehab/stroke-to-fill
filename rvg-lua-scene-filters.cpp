@@ -16,6 +16,7 @@
 #include <cmath>
 
 #include "rvg-lua.h"
+#include "rvg-lua-xform.h"
 #include "rvg-lua-scene-filters.h"
 #include "rvg-stroke-method.h"
 #include "rvg-scene-f-to-lua-scene.h"
