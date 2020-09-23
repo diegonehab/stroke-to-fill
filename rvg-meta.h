@@ -18,6 +18,7 @@
 
 #include <type_traits>
 #include <tuple>
+#include <cstdlib>
 
 namespace rvg {
     namespace meta {

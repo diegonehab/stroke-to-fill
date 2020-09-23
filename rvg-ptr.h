@@ -28,13 +28,11 @@ boost::intrusive_ptr<T> make_intrusive(ARGS&&... args) {
 
 template <typename T, typename ...ARGS>
 boost::intrusive_ptr<T> make_dashes_intrusive(ARGS&&... args) {
-    fprintf(stderr, "initializing dashes\n");
     return boost::intrusive_ptr<T>(new T(std::forward<ARGS>(args)...));
 }
 
 template <typename T, typename ...ARGS>
 boost::intrusive_ptr<T> make_style_intrusive(ARGS&&... args) {
-    fprintf(stderr, "initializing style\n");
     return boost::intrusive_ptr<T>(new T(std::forward<ARGS>(args)...));
 }
 
