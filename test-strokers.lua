@@ -605,6 +605,15 @@ local tests = {
         local bbox = {xmin = 20, ymin = 200, xmax = 80, ymax = 260}
         return {path{M, x0,y0, C, x1,y1, x2,y2, x3,y3}, 50, nil, bbox}
     end,
+    ["cusp"] = function(v)
+        local a = 0.5*v
+        local b = a + 0.5
+        local x0,y0, x1,y1, x2,y2, x3,y3 =
+            bezier.cut3(a, b, 20,260, 80,200, 20,200, 80,260)
+        local r = 25
+        local bbox = {xmin = 20-r, ymin = 200-r, xmax = 80+r, ymax = 260+r}
+        return {path{M, x0,y0, C, x1,y1, x2,y2, x3,y3}, 2*r, nil, bbox}
+    end,
     ["wedge_subdiv"] = function(v)
         local max = 256
         local min = 2

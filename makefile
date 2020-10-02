@@ -481,7 +481,11 @@ config:
 	@echo LP_LIB: $(LP_LIB)
 	@echo LP_INC: $(LP_INC)
 
-.PHONY: test-stroker
+
+.PHONY: test-stroker replicability
+
+replicability:
+	docker build fig-17 -t fig-17 && docker run -v `pwd`:/replicate --rm fig-17 /bin/bash -c '/stroke-to-fill/fig-17/fig-17.sh && cp /stroke-to-fill/fig-17*.svg /replicate'
 
 STROKER?=rvg
 
@@ -493,7 +497,7 @@ $(GT_DIR):
 	mkdir -p $(GT_DIR)
 
 $(GT_DIR)/%_distroke.png: $(GT_DIR)
-	test-strokers.lua -stroker:native -driver:distroke -test:$(notdir $(@:_distroke.png=)) > $@
+	./test-strokers.lua -stroker:native -driver:distroke -test:$(notdir $(@:_distroke.png=)) > $@
 
 test-stroker: strokers.so $(GT)
 	strokers/stroke-all $(STROKER)
